@@ -1,24 +1,22 @@
-// scripts/deploy.js
+// scripts/upgrade.js
 const { ethers, upgrades } = require('hardhat');
 const fs = require('fs');
 
 async function main () {
     const GrailHouse = await ethers.getContractFactory('GrailHouse');
-    console.log('Deploying...');
-    const _GrailHouse = await upgrades.deployProxy(
-      GrailHouse, 
-        [], 
-        { initializer: 'initialize' }
-    );
-    await _GrailHouse.deployed();
-    const addresses = {
-        proxy: _GrailHouse.address,
-        admin: await upgrades.erc1967.getAdminAddress(_GrailHouse.address), 
+    console.log('Upgrading...');
+    let addresses = JSON.parse(fs.readFileSync('deployment-addresses.json'));
+    await upgrades.upgradeProxy(addresses.proxy, GrailHouse);
+    console.log('Upgraded');
+
+    addresses = {
+        proxy: addresses.proxy,
+        admin: await upgrades.erc1967.getAdminAddress(addresses.proxy), 
         implementation: await upgrades.erc1967.getImplementationAddress(
-          _GrailHouse.address)
+            addresses.proxy)
     };
     console.log('Addresses:', addresses);
-
+    
     try { 
         await run('verify', { address: addresses.implementation });
     } catch (e) {}
